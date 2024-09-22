@@ -1,6 +1,6 @@
 # Ballon d'Or Streamlit App
 
-This project visualizes Ballon d'Or statistics using a Streamlit web application.
+This project visualizes statistics for 5 of the top 2024 Ballon d'Or contenders using a Streamlit web application.
 
 ## Prerequisites
 
