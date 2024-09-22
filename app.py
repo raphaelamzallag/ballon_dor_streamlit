@@ -11,23 +11,14 @@ def load_data():
 
 data = load_data()
 
-# Function to calculate additional statistics
-def calculate_additional_stats(df):
-    df['Dribbles Success Rate'] = (df['Dribbles Success'] / df['Dribbles Attempts'] * 100).fillna(0)
-    df['Minutes per Goal'] = (df['Minutes'] / df['Goals']).fillna(0)
-    df['Minutes per Assist'] = (df['Minutes'] / df['Assists']).fillna(0)
-
-    # Convert specified columns to integers
+# Function to calculate integer stats
+def convert_to_int(df):
     int_columns = ['Goals', 'Assists', 'Minutes', 'Shots Total', 'Shots On', 'Key Passes',
                    'Yellow Cards', 'Red Cards', 'Duels Total', 'Duels Won', 'Penalties Scored', 'Penalties Missed', 'Appearances']
     df[int_columns] = df[int_columns].fillna(0).astype(int)
-
     return df
 
-# Apply calculations
-data = calculate_additional_stats(data)
-
-# Radar chart function without scale display
+# Radar chart function without calculated columns and adjusted label distance
 def radar_chart(df, players, stats):
     num_vars = len(stats)
 
@@ -52,7 +43,8 @@ def radar_chart(df, players, stats):
 
     # Add labels to each axis
     ax.set_xticks(angles[:-1])
-    ax.set_xticklabels(stats)
+    ax.set_xticklabels(stats, fontsize=12)
+
 
     # Remove y-ticks for each axis (no scale display)
     ax.set_yticklabels([])  # Hide radial grid labels
@@ -64,6 +56,8 @@ def radar_chart(df, players, stats):
 
     st.pyplot(fig)
 
+
+
 # Display statistics as cards under the radar chart
 def display_stats_as_cards(df, players, stats):
     for player in players:
@@ -71,12 +65,12 @@ def display_stats_as_cards(df, players, stats):
         player_data = df[df['Name'] == player][stats].iloc[0]
 
         cols_per_row = 3  # You can adjust the number of columns per row
-        stat_items = player_data.items()
+        stat_items = list(player_data.items())  # Convert ItemsView to list
 
         # Iterate through the stats and display them in rows and columns
         for i in range(0, len(stat_items), cols_per_row):
             cols = st.columns(min(cols_per_row, len(stat_items) - i))
-            for col, (stat, value) in zip(cols, list(stat_items)[i:i + cols_per_row]):
+            for col, (stat, value) in zip(cols, stat_items[i:i + cols_per_row]):
                 col.metric(label=stat, value=f"{int(value) if isinstance(value, (int, float)) and value.is_integer() else f'{value:.2f}'}")
 
 # Title of the main page
@@ -84,10 +78,11 @@ st.title('Performance Dashboard')
 
 # Sidebar for navigation
 st.sidebar.title('Navigation')
-option = st.sidebar.radio('Select an option:', ('Individual Performance', 'Player Comparison'))
+option = st.sidebar.radio('Select an option:', ('Individual Performance (Deepdive by League)', 'Player Comparison'))
 
-if option == 'Individual Performance':
-    st.header('Individual Performance')
+if option == 'Individual Performance (Deepdive by League)':
+    st.header('Individual Performance (Deepdive by League)')
+
     # Player selection
     players = data['Name'].unique()
     selected_player = st.selectbox('Select a Player:', players)
@@ -97,49 +92,53 @@ if option == 'Individual Performance':
     competitions = player_competitions + ['TOTAL']
     selected_competition = st.selectbox('Select a Competition:', competitions)
 
-    # Statistics selection
-    stats_options = ['Appearances', 'Goals', 'Assists', 'Minutes', 'Dribbles Success Rate', 'Minutes per Goal', 'Minutes per Assist'] + \
-                    [col for col in data.columns if col not in ['Name', 'Competition', 'Dribbles Success', 'Dribbles Attempts', 'Goals', 'Assists', 'Minutes']]
-    selected_stats = st.multiselect('Select Statistics:', stats_options, default=['Appearances', 'Goals', 'Assists', 'Minutes', 'Dribbles Success Rate', 'Minutes per Goal', 'Minutes per Assist'])
-
     # Filter data based on selection
     if selected_competition == 'TOTAL':
         player_data = data[data['Name'] == selected_player]
-        total_stats = player_data[selected_stats].sum().to_dict()
     else:
         player_data = data[(data['Name'] == selected_player) & (data['Competition'] == selected_competition)]
-        if not player_data.empty:
-            total_stats = player_data[selected_stats].iloc[0].to_dict()
+
+    if not player_data.empty:
+        # Convert integer stats after filtering the data
+        player_data = convert_to_int(player_data)
+
+        # Statistics selection (no calculated stats)
+        stats_options = ['Appearances', 'Goals', 'Assists', 'Minutes', 'Shots Total', 'Shots On',
+                         'Key Passes', 'Yellow Cards', 'Red Cards', 'Duels Total', 'Duels Won',
+                         'Penalties Scored', 'Penalties Missed']
+        selected_stats = st.multiselect('Select Statistics:', stats_options, default=['Appearances', 'Goals', 'Assists', 'Minutes'])
+
+        # Sum or get the first row based on the selected competition
+        if selected_competition == 'TOTAL':
+            total_stats = player_data[selected_stats].sum().to_dict()
         else:
-            st.write("No data available for this player in the selected competition.")
-            total_stats = {}
+            total_stats = player_data[selected_stats].iloc[0].to_dict()
 
-    # Display statistics as cards, placed side by side
-    cols_per_row = 3  # You can adjust the number of columns per row
-    stat_items = list(total_stats.items())
+        # Display statistics as cards, placed side by side
+        cols_per_row = 3  # You can adjust the number of columns per row
+        stat_items = list(total_stats.items())
 
-    # Iterate through the stats and display them in rows and columns
-    for i in range(0, len(stat_items), cols_per_row):
-        cols = st.columns(min(cols_per_row, len(stat_items) - i))
-        for col, (stat, value) in zip(cols, stat_items[i:i + cols_per_row]):
-            # Ensure integer stats are displayed without decimals
-            if stat in ['Goals', 'Assists', 'Minutes', 'Shots Total', 'Shots On', 'Key Passes',
-                        'Yellow Cards', 'Red Cards', 'Duels Total', 'Duels Won', 'Penalties Scored', 'Penalties Missed', 'Appearances']:
+        # Iterate through the stats and display them in rows and columns
+        for i in range(0, len(stat_items), cols_per_row):
+            cols = st.columns(min(cols_per_row, len(stat_items) - i))
+            for col, (stat, value) in zip(cols, stat_items[i:i + cols_per_row]):
+                # Ensure integer stats are displayed without decimals
                 col.metric(label=stat, value=f"{int(value)}")
-            else:
-                col.metric(label=stat, value=f"{value:.2f}")
+    else:
+        st.write("No data available for this player in the selected competition.")
 
 elif option == 'Player Comparison':
     st.header('Player Comparison')
 
-    # Player selection
+    # Player selection with default "Erling Haaland" and "Vinícius Jr."
     players = data['Name'].unique()
     selected_players = st.multiselect('Select Players:', players, default=['Erling Haaland', 'Vinícius Jr.'])
 
-    # Statistics selection
-    stats_options = ['Appearances', 'Goals', 'Assists', 'Minutes', 'Dribbles Success Rate', 'Minutes per Goal', 'Minutes per Assist'] + \
-                    [col for col in data.columns if col not in ['Name', 'Competition', 'Dribbles Success', 'Dribbles Attempts', 'Goals', 'Assists', 'Minutes']]
-    selected_stats = st.multiselect('Select Statistics for Comparison:', stats_options, default=['Appearances', 'Goals', 'Assists', 'Minutes', 'Dribbles Success Rate', 'Minutes per Goal', 'Minutes per Assist'])
+    # Statistics selection (no calculated stats)
+    stats_options = ['Appearances', 'Goals', 'Assists', 'Minutes', 'Shots Total', 'Shots On',
+                     'Key Passes', 'Yellow Cards', 'Red Cards', 'Duels Total', 'Duels Won',
+                     'Penalties Scored', 'Penalties Missed']
+    selected_stats = st.multiselect('Select Statistics for Comparison:', stats_options, default=['Appearances', 'Goals', 'Assists', 'Minutes'])
 
     if len(selected_players) > 0 and len(selected_stats) > 0:
         st.subheader('Spider Graph Comparison')
