@@ -74,7 +74,7 @@ def display_stats_as_cards(df, players, stats):
                 col.metric(label=stat, value=f"{int(value) if isinstance(value, (int, float)) and value.is_integer() else f'{value:.2f}'}")
 
 # Title of the main page
-st.title('Performance Dashboard')
+st.title('Who deserves the 2024 Ballon d\'Or?')
 
 # Sidebar for navigation
 st.sidebar.title('Navigation')
