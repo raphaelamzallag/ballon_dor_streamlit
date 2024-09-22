@@ -5,8 +5,7 @@ This project visualizes statistics for 5 of the top 2024 Ballon d'Or contenders 
 ## Prerequisites
 
 - Docker (if you want to run the app in a container)
-- Python 3.9 (if you want to run the app locally)
-- pip (Python package installer)
+- Python 3.10.6 (if you want to run the app locally)
 
 ## Running the App Locally
 
